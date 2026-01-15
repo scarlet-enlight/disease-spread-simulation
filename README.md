@@ -93,6 +93,11 @@ cd disease-spread-simulation
 pip install -r requirements.txt
 ```
 
+or with conda:
+```bash
+conda env create -f environment.yml
+```
+
 ### Step 3: Download COVID-19 Data (Optional)
 1. Visit [Kaggle COVID-19 Dataset](https://www.kaggle.com/datasets/sudalairajkumar/novel-corona-virus-2019-dataset)
 2. Download the dataset
