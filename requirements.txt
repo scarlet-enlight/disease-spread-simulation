@@ -1,0 +1,27 @@
+# Core scientific computing
+numpy>=1.21.0
+pandas>=1.3.0
+matplotlib>=3.4.0
+
+# Machine learning
+scikit-learn>=1.0.0
+joblib>=1.1.0
+
+# Jupyter notebook support
+jupyter>=1.0.0
+ipykernel>=6.0.0
+notebook>=6.4.0
+
+# Optional: For enhanced visualizations
+seaborn>=0.11.0
+plotly>=5.0.0
+
+# Optional: For interactive dashboards
+# streamlit>=1.10.0
+# dash>=2.0.0
+
+# Data processing
+scipy>=1.7.0
+
+# For downloading Kaggle datasets (optional)
+# kaggle>=1.5.12
