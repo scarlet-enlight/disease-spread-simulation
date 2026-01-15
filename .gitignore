@@ -15,10 +15,11 @@ dist/
 .ipynb_checkpoints
 *.ipynb_checkpoints/
 
-# Data files (large files)
-data/raw/*.csv
-data/raw/*.xlsx
-!data/raw/.gitkeep
+# Generated data
+data/processed/
+
+# Simulation/ML outputs
+results/
 
 # Results (optional - you may want to commit these)
 # results/*.pkl

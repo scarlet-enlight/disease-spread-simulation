@@ -143,8 +143,8 @@ jupyter notebook notebooks/analysis.ipynb
 ## 📈 Expected Results
 
 ### Simulation Output
-- `simulation_results.csv`: Daily statistics (susceptible, infected, recovered)
-- `simulation_final_state.png`: Final visualization with disease spread curves
+- `data/processed/simulation_results.csv`: Daily statistics (susceptible, infected, recovered)
+- `results/simulation_final_state.png`: Final visualization with disease spread curves
 - Real-time visualization showing agent movement and infection spread
 
 ### Machine Learning Output
@@ -166,21 +166,28 @@ This project demonstrates:
 4. **Machine Learning**: Model comparison and evaluation
 5. **Scientific Programming**: Clean code structure and documentation
 
-## 👥 Future ML Extensions
+### 👥 Future ML Extensions
+
+### Role for the Third Student (ElPollaco)
+To keep the workload reasonable, ElPollaco can focus on scoped, high-impact tasks that complement the existing modules:
+- Document the data pipeline end-to-end (from `data_preparation.py` to `ml_prediction.py`) with diagrams or markdown notes.
+- Build a lightweight sanity-check notebook that loads `data/processed/ml_training_data.csv`, plots a few diagnostics, and exports a short PDF summary for reports.
+- Implement a simple parameter dashboard (e.g., using Streamlit sliders for `beta`/`gamma`) that visualizes how changes affect precomputed simulation CSVs—no need to rerun the heavy simulation each time.
+- Write regression tests or assertions that ensure new data exports keep required columns; integrate them as a `pytest` file or a notebook cell.
 
 ### Recommended Tasks for ElPollaco
 
 #### Option 1: Enhanced Analysis (Beginner-Friendly)
-- Create interactive dashboard using Plotly or Streamlit
-- Add statistical analysis of outbreak patterns
-- Implement cluster analysis to identify high-risk zones
-- Create comprehensive report generation
+- Create a single interactive Plotly chart highlighting peak infections by district (reuse existing CSVs; no backend work needed).
+- Add descriptive statistics of outbreak patterns (mean peak day, attack rate range) and place them into the notebook/README.
+- Implement a k-means cluster check on district risk levels using static input (small dataset, easy to explain).
+- Assemble a concise, auto-generated PDF/Markdown report summarizing the above plots for instructors.
 
 #### Option 2: Model Validation (Intermediate)
-- Compare simulation results with real COVID-19 data
-- Implement sensitivity analysis for parameters
-- Add uncertainty quantification
-- Create validation metrics and benchmarks
+- Compare simulation curves with a trimmed slice of real COVID-19 data (e.g., only Poland 2020 Q1) and discuss differences.
+- Perform a one-parameter-at-a-time sensitivity sweep (e.g., vary transport hub transmission ±5%) and chart the deltas—limit to 3 runs.
+- Add a lightweight uncertainty band by bootstrapping existing simulation CSV rows instead of rerunning the engine.
+- Define validation metrics plus a short checklist so future contributors can replicate the analysis.
 
 ### Suggested Workflow
 1. Review current codebase and understand simulation mechanics

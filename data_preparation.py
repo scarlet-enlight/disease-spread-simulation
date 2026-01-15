@@ -40,15 +40,11 @@ def process_covid_data(filepath: str = 'data/raw/covid_19_data.csv'):
         df = pd.read_csv(filepath)
         print(f"Loaded data with {len(df)} rows")
         print(f"Columns: {df.columns.tolist()}")
-        
-        # Example processing for typical COVID dataset structure
-        if 'Country/Region' in df.columns:
-            # Filter for Poland if available
-            poland_data = df[df['Country/Region'] == 'Poland'].copy()
-            
-            if len(poland_data) > 0:
-                print(f"\nFound {len(poland_data)} records for Poland")
-                return poland_data
+
+        structured_df = prepare_structured_timeseries(df)
+        if structured_df is not None:
+            print("\nConverted raw Kaggle dataset into SIR-friendly time series")
+            return structured_df
         
         return df
     
@@ -56,6 +52,47 @@ def process_covid_data(filepath: str = 'data/raw/covid_19_data.csv'):
         print(f"File not found: {filepath}")
         print("Generating synthetic data based on COVID-19 characteristics...")
         return generate_synthetic_covid_data()
+
+def prepare_structured_timeseries(df: pd.DataFrame, target_country: str = 'Poland') -> pd.DataFrame | None:
+    """Convert Kaggle-style records into aggregated SIR-friendly features"""
+    required_cols = {'ObservationDate', 'Confirmed', 'Deaths', 'Recovered'}
+    if not required_cols.issubset(df.columns):
+        return None
+    working_df = df.copy()
+    working_df['ObservationDate'] = pd.to_datetime(working_df['ObservationDate'], errors='coerce')
+    working_df = working_df.dropna(subset=['ObservationDate'])
+    population_hint = None
+    if 'Country/Region' in working_df.columns:
+        country_series = working_df['Country/Region'].astype(str).str.strip().str.lower()
+        mask = country_series == target_country.lower()
+        if mask.any():
+            working_df = working_df[mask]
+            population_hint = 38_000_000
+            print(f"\nAggregating dataset for {target_country}")
+        else:
+            print(f"\n{target_country} not present. Using aggregated global totals.")
+    aggregated = (
+        working_df
+        .groupby('ObservationDate')[['Confirmed', 'Deaths', 'Recovered']]
+        .sum()
+        .sort_index()
+        .reset_index()
+    )
+    if aggregated.empty:
+        return None
+    aggregated['day'] = (aggregated['ObservationDate'] - aggregated['ObservationDate'].min()).dt.days
+    aggregated['infected'] = (aggregated['Confirmed'] - aggregated['Recovered'] - aggregated['Deaths']).clip(lower=0)
+    aggregated['recovered'] = aggregated['Recovered']
+    inferred_population = population_hint or int(max(aggregated['Confirmed'].max(), 1) * 5)
+    inferred_population = max(inferred_population, int(aggregated['infected'].max() * 2))
+    aggregated['susceptible'] = (
+        inferred_population - aggregated['infected'] - aggregated['recovered']
+    ).clip(lower=0)
+    confirmed_delta = aggregated['Confirmed'].diff().fillna(aggregated['Confirmed'].iloc[0])
+    aggregated['new_cases'] = confirmed_delta.clip(lower=0)
+    primary_cols = ['day', 'susceptible', 'infected', 'recovered', 'new_cases']
+    extra_cols = [col for col in aggregated.columns if col not in primary_cols]
+    return aggregated[primary_cols + extra_cols]
 
 def generate_synthetic_covid_data():
     """
@@ -226,9 +263,9 @@ def main():
     print("\nStep 1: Loading COVID-19 data...")
     df = process_covid_data()
     
-    # Generate synthetic data if real data not available
-    if len(df) < 100:
-        print("\nGenerating synthetic data for demonstration...")
+    required_columns = ['day', 'susceptible', 'infected', 'recovered', 'new_cases']
+    if not all(col in df.columns for col in required_columns):
+        print("\nRequired columns missing, generating synthetic data for demonstration...")
         df = generate_synthetic_covid_data()
     
     # Extract parameters

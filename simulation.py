@@ -11,6 +11,13 @@ from matplotlib.animation import FuncAnimation
 from dataclasses import dataclass
 from typing import List, Tuple
 import json
+from pathlib import Path
+
+PROCESSED_DIR = Path('data/processed')
+RESULTS_DIR = Path('results')
+SIM_RESULTS_PATH = PROCESSED_DIR / 'simulation_results.csv'
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class District:
@@ -167,11 +174,13 @@ class DiseaseSimulation:
             'total': self.n_people
         }
     
-    def save_results(self, filename: str = 'simulation_results.csv'):
+    def save_results(self, filename: str = str(SIM_RESULTS_PATH)):
         """Save simulation history to CSV"""
         df = pd.DataFrame(self.history)
-        df.to_csv(filename, index=False)
-        print(f"Results saved to {filename}")
+        output_path = Path(filename)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(output_path, index=False)
+        print(f"Results saved to {output_path}")
     
     def visualize_map(self, ax=None, show_districts=True):
         """Visualize current state of the simulation"""
@@ -247,7 +256,9 @@ def run_simulation(days: int = 100, n_people: int = 500):
     ax2.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('simulation_final_state.png', dpi=300, bbox_inches='tight')
+    final_image_path = RESULTS_DIR / 'simulation_final_state.png'
+    final_image_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(final_image_path, dpi=300, bbox_inches='tight')
     plt.show()
     
     return sim

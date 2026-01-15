@@ -6,6 +6,7 @@ Implements basic ML algorithms to predict future infection trends
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation, PillowWriter
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression, Ridge
@@ -26,16 +27,37 @@ class DiseasePredictor:
         self.scaler = StandardScaler()
         self.best_model = None
         self.best_model_name = None
+        self.training_df = None
         
     def prepare_data(self, filepath: str = 'data/processed/ml_training_data.csv'):
         """Load and prepare data for training"""
         df = pd.read_csv(filepath)
         print(f"Loaded {len(df)} samples")
+        if 'ObservationDate' in df.columns:
+            df['ObservationDate'] = pd.to_datetime(df['ObservationDate'], errors='coerce')
+            missing_dates = df['ObservationDate'].isna().sum()
+            if missing_dates:
+                print(f"Dropping {missing_dates} rows with invalid ObservationDate values")
+            df = df.dropna(subset=['ObservationDate'])
+            df['observation_day'] = (df['ObservationDate'] - df['ObservationDate'].min()).dt.days
+        
+        self.training_df = df.copy()
         
         # Define features and target
         feature_cols = [col for col in df.columns if col not in ['day', 'infected', 'susceptible', 'recovered', 'new_cases']]
         target_col = 'infected'
         
+        numeric_feature_cols = []
+        dropped_cols = []
+        for col in feature_cols:
+            if pd.api.types.is_numeric_dtype(df[col]):
+                numeric_feature_cols.append(col)
+            else:
+                dropped_cols.append(col)
+        if dropped_cols:
+            print(f"Dropping non-numeric features: {dropped_cols}")
+        feature_cols = numeric_feature_cols
+
         if not feature_cols:
             print("No feature columns found. Using basic features...")
             # Create simple features from available data
@@ -189,7 +211,65 @@ class DiseasePredictor:
         self.best_model_name = model_data['model_name']
         print(f"Loaded model: {self.best_model_name}")
 
-def evaluate_on_simulation_data(simulation_csv: str = 'simulation_results.csv'):
+def save_infection_trend_gif(df: pd.DataFrame, output_path: str = 'results/infection_trend.gif'):
+    """Create a simple GIF showing infected counts over time"""
+    if 'infected' not in df.columns:
+        print("Skipping GIF creation: 'infected' column missing")
+        return
+    time_col = None
+    for candidate in ['day', 'observation_day']:
+        if candidate in df.columns:
+            time_col = candidate
+            break
+    if time_col is None:
+        print("Skipping GIF creation: no time axis available")
+        return
+    subset = df[[time_col, 'infected']].dropna().sort_values(time_col)
+    if subset.empty:
+        print("Skipping GIF creation: insufficient data")
+        return
+    frames = len(subset)
+    if frames < 5:
+        print("Skipping GIF creation: need at least 5 frames")
+        return
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.set_title('Infected Over Time')
+    ax.set_xlabel(time_col.capitalize())
+    ax.set_ylabel('Infected Individuals')
+    ax.grid(True, alpha=0.3)
+    x_data = subset[time_col].values
+    y_data = subset['infected'].values
+    ax.set_xlim(x_data.min(), x_data.max())
+    y_max = max(y_data)
+    ax.set_ylim(0, max(y_max * 1.1, 1))
+    line, = ax.plot([], [], color='crimson', linewidth=2)
+    fill_artists: list = []
+
+    def init():
+        line.set_data([], [])
+        return line,
+
+    def update(frame):
+        current_x = x_data[:frame]
+        current_y = y_data[:frame]
+        line.set_data(current_x, current_y)
+        while fill_artists:
+            artist = fill_artists.pop()
+            artist.remove()
+        if len(current_x) > 1:
+            artist = ax.fill_between(current_x, current_y, alpha=0.2, color='crimson')
+            fill_artists.append(artist)
+        return line,
+
+    frame_sequence = range(1, frames + 1)
+    anim = FuncAnimation(fig, update, init_func=init, frames=frame_sequence, interval=60, blit=True, repeat=False)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    anim.save(output_path, writer=PillowWriter(fps=24))
+    plt.close(fig)
+    print(f"Saved infection trend animation to {output_path}")
+
+def evaluate_on_simulation_data(simulation_csv: str = 'data/processed/simulation_results.csv'):
     """Train and evaluate models on simulation output"""
     print("=" * 60)
     print("Machine Learning Prediction on Simulation Data")
@@ -246,10 +326,12 @@ def main():
         
         # Save model
         predictor.save_model()
+        if predictor.training_df is not None:
+            save_infection_trend_gif(predictor.training_df, 'results/infection_trend.gif')
         
     except FileNotFoundError:
         print("Processed data not found. Please run data_preparation.py first")
-        print("Or run the simulation to generate simulation_results.csv")
+        print("Or run the simulation to generate data/processed/simulation_results.csv")
 
 if __name__ == "__main__":
     main()
